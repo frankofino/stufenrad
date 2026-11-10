@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#F1F3F7">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Stufenrad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stufenrad">
+<style>
+/* Layout: Quintenzirkel als Steuerzentrale links/oben, darunter bzw. rechts ein klebendes Instrumentenfeld und die Stufenliste. Farben = Funktionsfamilien T / S / D. */
+:root{
+  --bg:#F1F3F7; --surface:#FFFFFF; --ink:#17202E; --muted:#5A6375; --line:#D7DCE5;
+  --t:#27766C; --s:#A06400; --d:#BF3B34; --on-fam:#FFFFFF;
+  --key-w:#FFFFFF; --key-b:#1A1F29; --key-edge:#B7BFCC;
+  --f-display:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-num:ui-serif,"New York",Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E121A; --surface:#171D2A; --ink:#E6EAF1; --muted:#97A0B2; --line:#2A3245;
+  --t:#4DB0A3; --s:#E0A43E; --d:#EC6A5D; --on-fam:#0E121A;
+  --key-w:#DCE1EA; --key-b:#06080C; --key-edge:#566074; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E121A; --surface:#171D2A; --ink:#E6EAF1; --muted:#97A0B2; --line:#2A3245;
+  --t:#4DB0A3; --s:#E0A43E; --d:#EC6A5D; --on-fam:#0E121A;
+  --key-w:#DCE1EA; --key-b:#06080C; --key-edge:#566074; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px 40px;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit}
+button:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.app{max-width:1040px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+h1{font-family:var(--f-display);font-size:1.6rem;line-height:1.1;margin:0;letter-spacing:-.01em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.chipbtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.chipbtn[aria-pressed="false"]{color:var(--muted)}
+
+.grid{display:grid;gap:18px}
+@media (min-width:860px){.grid{grid-template-columns:minmax(0,400px) minmax(0,1fr);align-items:start}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* Quintenzirkel */
+.circlewrap{max-width:360px;width:100%;margin:0 auto}
+#circle{width:100%;height:auto;display:block;touch-action:manipulation}
+.ring g{cursor:pointer}
+.ring path{fill:var(--surface);stroke:var(--line);stroke-width:1}
+.ring text{fill:var(--ink);font-family:var(--f-display);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.ring .nm-o{font-size:15px;font-weight:600}
+.ring .nm-i{font-size:12px;font-weight:500}
+.ring .fn{font-size:9px;font-weight:700;fill:var(--fam)}
+.ring g.tint path{fill:color-mix(in srgb,var(--fam) 20%,var(--surface))}
+.ring g.sel path{fill:var(--fam);stroke:var(--fam)}
+.ring g.sel text{fill:var(--on-fam)}
+.ctr{fill:var(--bg);stroke:var(--line)}
+.ctr-k{font-family:var(--f-display);font-size:19px;font-weight:700;fill:var(--ink);text-anchor:middle}
+.ctr-v{font-size:10px;fill:var(--muted);text-anchor:middle}
+.hint{margin:0;color:var(--muted);font-size:.82rem;text-align:center;text-wrap:balance}
+.enh{display:block;margin:6px auto 0}
+
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.fact b{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.fact span{font-weight:600;font-size:.9rem}
+
+.scale{display:flex;gap:4px;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px;width:100%;text-align:center}
+.scale .n{flex:1;min-width:0;border-radius:8px;padding:4px 0}
+.scale .n small{display:block;font-family:var(--f-num);color:var(--muted);font-size:.72rem}
+.scale .n strong{font-size:.95rem}
+.scale .n.raised strong{color:var(--d)}
+.scale[aria-pressed="true"]{border-color:var(--t);background:color-mix(in srgb,var(--t) 8%,var(--surface))}
+
+.controls{display:flex;flex-direction:column;gap:8px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:transparent;border-radius:7px;padding:7px 6px;font-size:.88rem;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--fam);margin-right:5px;vertical-align:-1px}
+
+/* Instrumentenfeld */
+.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:6px}
+@media (min-width:860px){.stage{top:calc(env(safe-area-inset-top,0px) + 12px)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;border-top:4px solid var(--fam)}
+.st-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.st-name{min-width:0}
+.st-name h2{margin:0;font-family:var(--f-display);font-size:1.45rem;line-height:1.15}
+.st-name h2 .fnp{font-size:.85rem;vertical-align:3px;margin-left:6px}
+.st-name p{margin:2px 0 0;color:var(--muted);font-size:.82rem}
+.play{border:0;background:var(--fam);color:var(--on-fam);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.inst{margin-top:8px;overflow-x:auto}
+.inst svg{display:block;width:100%;height:auto;min-width:300px}
+.st-desc{margin:8px 0 0;font-size:.86rem;max-width:62ch}
+.kw{fill:var(--key-w);stroke:var(--key-edge)}
+.kb{fill:var(--key-b);stroke:var(--key-b)}
+.dot{fill:color-mix(in srgb,var(--fam) 55%,var(--surface))}
+.dot.root{fill:var(--fam)}
+.dl{fill:#fff;font-family:var(--f-body);font-weight:700;text-anchor:middle;dominant-baseline:central}
+.dot-out{fill:none;stroke:var(--fam);stroke-width:1.5}
+.fb-wood{fill:color-mix(in srgb,var(--key-edge) 18%,var(--surface))}
+.fb-fret{stroke:var(--key-edge);stroke-width:1.2}
+.fb-nut{stroke:var(--ink);stroke-width:4}
+.fb-str{stroke:var(--muted);}
+.fb-txt{fill:var(--muted);font-size:9px;text-anchor:middle;font-family:var(--f-body)}
+.fb-mk{fill:var(--key-edge);opacity:.6}
+
+/* Nächster Akkord */
+.next{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.next-h{margin:0 0 6px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.next-h span{text-transform:none;letter-spacing:0;font-weight:400}
+.next-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x proximity}
+.nx{flex:0 0 auto;scroll-snap-align:start;display:grid;grid-template-columns:auto auto;align-items:center;gap:2px 8px;text-align:left;
+  background:color-mix(in srgb,var(--fam) 9%,var(--surface));border:1px solid color-mix(in srgb,var(--fam) 35%,var(--line));border-radius:10px;padding:6px 10px;cursor:pointer}
+.nx-sym{font-weight:700;font-size:1rem}
+.nx-fn{justify-self:end;color:var(--fam);font-weight:800;font-family:var(--f-display);font-size:.85rem}
+.nx-why{font-size:.74rem;color:var(--muted);white-space:nowrap}
+.nx-str{justify-self:end;font-size:.6rem;color:var(--fam);letter-spacing:1px}
+.next-tip{margin:6px 0 0;font-size:.8rem;color:var(--muted)}
+
+/* Stufenliste */
+.chords{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{width:100%;display:grid;grid-template-columns:3.4rem minmax(0,1fr) auto;align-items:center;gap:10px;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer}
+.row[aria-pressed="true"]{border-color:var(--fam);background:color-mix(in srgb,var(--fam) 10%,var(--surface));box-shadow:inset 3px 0 0 var(--fam)}
+.rn{font-family:var(--f-num);font-size:1.25rem;font-weight:600}
+.rn sup{font-size:.62em}
+.sym{font-weight:700;font-size:1.02rem}
+.tones{display:block;color:var(--muted);font-size:.8rem;font-weight:400;overflow-wrap:anywhere}
+.pill{background:color-mix(in srgb,var(--fam) 16%,var(--surface));color:var(--fam);font-weight:800;border-radius:999px;padding:4px 10px;font-size:.9rem;min-width:2.6rem;text-align:center;font-family:var(--f-display)}
+.foot{color:var(--muted);font-size:.78rem;margin:4px 0 0}
+@media (prefers-reduced-motion:no-preference){.row,.seg button,.ring path{transition:background-color .15s,fill .15s,border-color .15s}}
+</style>
+
+</head><body>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Stufenrad</h1>
+      <p class="sub">Tonarten, Stufen und Funktionen</p>
+    </div>
+    <button type="button" id="snd" class="chipbtn" aria-pressed="true">Ton an</button>
+  </header>
+
+  <main class="grid">
+    <section class="col">
+      <div class="circlewrap"><svg id="circle" viewBox="0 0 320 320" aria-label="Quintenzirkel"></svg></div>
+      <p class="hint" id="hint"></p>
+      <button type="button" class="chipbtn enh" id="enh" hidden></button>
+      <div class="facts" id="facts"></div>
+      <button type="button" class="scale" id="scale" aria-pressed="false" aria-label="Tonleiter zeigen"></button>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Akkordart" data-key="sev">
+          <button type="button" data-val="0">Dreiklänge</button>
+          <button type="button" data-val="1">Septakkorde</button>
+        </div>
+        <div class="seg" role="group" aria-label="Mollart" data-key="minor" id="minorSeg">
+          <button type="button" data-val="nat">Moll natürlich</button>
+          <button type="button" data-val="harm">Moll harmonisch</button>
+        </div>
+        <div class="seg" role="group" aria-label="Instrument" data-key="inst">
+          <button type="button" data-val="piano">Klaviatur</button>
+          <button type="button" data-val="guitar">Griffbrett</button>
+        </div>
+      </div>
+      <div class="legend">
+        <span style="--fam:var(--t)"><i></i>Tonika-Gruppe</span>
+        <span style="--fam:var(--s)"><i></i>Subdominant-Gruppe</span>
+        <span style="--fam:var(--d)"><i></i>Dominant-Gruppe</span>
+      </div>
+    </section>
+
+    <section class="col">
+      <div class="stage">
+        <div class="card" id="card">
+          <div class="st-head">
+            <div class="st-name"><h2 id="stTitle"></h2><p id="stSub"></p></div>
+            <button type="button" class="play" id="play">▶ Anhören</button>
+          </div>
+          <div class="inst" id="inst"></div>
+          <p class="st-desc" id="stDesc"></p>
+          <div class="next" id="next">
+            <p class="next-h">Was passt als Nächstes? <span>●●● sehr typisch · ●○○ Farbe</span></p>
+            <div class="next-row" id="nextRow"></div>
+            <p class="next-tip" id="nextTip" hidden></p>
+          </div>
+        </div>
+      </div>
+      <ol class="chords" id="chords"></ol>
+      <p class="foot">Tipp: Beim iPhone muss der Stummschalter aus sein, sonst bleibt der Ton stumm.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+const LET=['C','D','E','F','G','A','H'];
+const NAT=[0,2,4,5,7,9,11];
+const IV={dur:[0,2,4,5,7,9,11],nat:[0,2,3,5,7,8,10],harm:[0,2,3,5,7,8,11]};
+const FAMVAR={t:'var(--t)',s:'var(--s)',d:'var(--d)'};
+
+// Quintenzirkel: [Buchstabe, Vorzeichen]; Position 6 hat zwei Schreibweisen
+const MAJ=[[0,0],[4,0],[1,0],[5,0],[2,0],[6,0],null,[1,-1],[5,-1],[2,-1],[6,-1],[3,0]];
+const MIN=[[5,0],[2,0],[6,0],[3,1],[0,1],[4,1],null,[6,-1],[3,0],[0,0],[4,0],[1,0]];
+const MAJ6={sharp:[3,1],flat:[4,-1]}, MIN6={sharp:[1,1],flat:[2,-1]};
+const SHARPS=['Fis','Cis','Gis','Dis','Ais','Eis'], FLATS=['B','Es','As','Des','Ges','Ces'];
+
+const QUAL={
+ '4,7':['','Durdreiklang'],'3,7':['m','Molldreiklang'],'3,6':['°','verminderter Dreiklang'],'4,8':['+','übermäßiger Dreiklang'],
+ '4,7,11':['maj7','großer Durseptakkord'],'4,7,10':['7','Dominantseptakkord'],'3,7,10':['m7','Mollseptakkord'],
+ '3,6,10':['m7♭5','halbverminderter Septakkord'],'3,6,9':['°7','verminderter Septakkord'],
+ '3,7,11':['m(maj7)','Moll-Major-Septakkord'],'4,8,11':['maj7♯5','übermäßiger Septakkord']};
+const RSUF={'':'','m':'','°':'°','+':'+','maj7':'maj7','7':'7','m7':'7','m7♭5':'ø7','°7':'°7','m(maj7)':'maj7','maj7♯5':'+maj7'};
+const ROM=['I','II','III','IV','V','VI','VII'];
+
+const FUN={
+ dur:[
+  {f:'T',fam:'t',d:'Tonika: Ruhepunkt und Zentrum der Tonart.'},
+  {f:'Sp',fam:'s',d:'Subdominantparallele: Mollvertreter der Subdominante, klingt weicher.'},
+  {f:'Dp',fam:'d',d:'Dominantparallele, auch als Tonikagegenklang (Tg) deutbar: schwebend, kann Dominante oder Tonika vertreten.'},
+  {f:'S',fam:'s',d:'Subdominante: führt von der Tonika weg und bereitet die Dominante vor.'},
+  {f:'D',f7:'D⁷',fam:'d',d:'Dominante: baut Spannung auf und will zur Tonika auflösen.',d7:'Dominantseptakkord: die Septime verstärkt den Zug zur Tonika.'},
+  {f:'Tp',fam:'t',d:'Tonikaparallele: Mollvertreter der Tonika, typisches Ziel des Trugschlusses (D → Tp).'},
+  {f:'Đ⁷',f7:'Đ⁹',fam:'d',d:'Verkürzter Dominantseptakkord: Dominante ohne Grundton, drängt zur Tonika.',d7:'Verkürzter Dominantseptnonakkord: Dominante mit None, ohne Grundton.'}],
+ nat:[
+  {f:'t',fam:'t',d:'Molltonika: Ruhepunkt der Molltonart.'},
+  {f:'(s)',fam:'s',d:'Verminderter Akkord mit subdominantischer Wirkung, deutbar als Subdominante mit hinzugefügter Sexte ohne Grundton.',d7:'Halbverminderter Septakkord: typischer Vorbereiter der Dominante in Moll (II – V – I).'},
+  {f:'tP',fam:'t',d:'Tonika-Durparallele: Grundakkord der parallelen Durtonart.'},
+  {f:'s',fam:'s',d:'Mollsubdominante: führt von der Tonika weg, dunkle Farbe.'},
+  {f:'d',fam:'d',d:'Molldominante: ohne Leitton, deshalb kaum Spannung. In harmonisch Moll wird daraus die Dur-Dominante D.'},
+  {f:'sP',fam:'s',d:'Subdominant-Durparallele: weicher Durklang, häufiges Ziel des Trugschlusses.'},
+  {f:'dP',fam:'d',d:'Dominant-Durparallele: Durakkord auf der siebten Stufe, führt oft zur tP.'}]
+};
+FUN.harm=FUN.nat.slice();
+FUN.harm[2]={f:'tP⁺',fam:'t',d:'Übermäßiger Dreiklang, entsteht durch den Leitton. Als eigene Funktion selten.'};
+FUN.harm[4]={f:'D',f7:'D⁷',fam:'d',d:'Dur-Dominante: der erhöhte Leitton erzeugt echten Zug zur Molltonika.',d7:'Dominantseptakkord: wie in Dur, mit starkem Zug zur Molltonika.'};
+FUN.harm[6]={f:'Đ⁷',f7:'Đ⁹',fam:'d',d:'Verminderter Dreiklang auf dem Leitton: verkürzte Dominante.',d7:'Verminderter Septakkord: verkürzter Dominantseptnonakkord mit kleiner None.'};
+
+// Was passt als Nächstes: [Zielstufe, Stärke 1–3, Begründung]
+const NEXT={
+ dur:{
+  0:[[4,3,'Spannung aufbauen'],[3,3,'Öffnen'],[5,2,'Weicher Wechsel'],[1,2,'Sanft weiter']],
+  1:[[4,3,'Klassisch II – V'],[6,2,'Zur Dominante'],[3,1,'Seitenschritt']],
+  2:[[5,3,'Quintfall'],[3,2,'Zur Subdominante'],[1,1,'Abwärts']],
+  3:[[4,3,'Kadenz S – D'],[0,3,'Plagalschluss'],[1,2,'Weich'],[6,1,'Zur Dominante']],
+  4:[[0,3,'Auflösung'],[5,2,'Trugschluss'],[3,1,'Rückschritt']],
+  5:[[1,3,'Quintfall'],[3,3,'Zur Subdominante'],[4,2,'Zur Dominante'],[2,1,'Abwärts']],
+  6:[[0,3,'Auflösung'],[5,1,'Trugschluss']]},
+ nat:{
+  0:[[3,3,'Öffnen'],[5,3,'Weicher Wechsel'],[6,2,'Abwärts'],[2,2,'Zur Durparallele'],[4,1,'Zur Dominante']],
+  1:[[4,3,'Klassisch II – V'],[0,1,'Zurück']],
+  2:[[5,3,'Weiter in Dur'],[3,2,'Zur Subdominante'],[6,2,'Seitenschritt']],
+  3:[[4,3,'Kadenz s – d'],[0,3,'Plagalschluss'],[6,2,'Abwärts']],
+  4:[[0,2,'Auflösung, ohne Leitton'],[5,2,'Trugschluss'],[3,1,'Rückschritt']],
+  5:[[6,3,'Aufwärts'],[3,2,'Zur Subdominante'],[4,2,'Zur Dominante'],[1,1,'Vorbereitung']],
+  6:[[2,3,'Quintfall nach Dur'],[0,2,'Zurück zur Tonika'],[5,1,'Abwärts']]}
+};
+NEXT.harm=Object.assign({},NEXT.nat,{
+  0:[[4,3,'Spannung aufbauen'],[3,3,'Öffnen'],[5,2,'Weicher Wechsel'],[1,1,'Vorbereitung']],
+  2:[[5,2,'Weiter'],[3,1,'Zur Subdominante']],
+  3:[[4,3,'Kadenz s – D'],[0,3,'Plagalschluss'],[1,1,'Vorbereitung']],
+  4:[[0,3,'Auflösung'],[5,3,'Trugschluss'],[3,1,'Rückschritt']],
+  5:[[4,3,'Zur Dominante'],[3,2,'Zur Subdominante'],[1,2,'Vorbereitung']],
+  6:[[0,3,'Auflösung']]});
+
+let S={pos:0,mode:'dur',enh:'sharp',sev:false,minor:'nat',inst:'piano',deg:0,view:'chord',sound:true};
+try{const s=JSON.parse(localStorage.getItem('stufenrad-v1')||'null'); if(s) S=Object.assign(S,s);}catch(e){}
+function save(){try{localStorage.setItem('stufenrad-v1',JSON.stringify(S));}catch(e){}}
+
+function nn(L,A){
+  const b=LET[L]; if(A===0) return b;
+  if(A>0) return b+'is'.repeat(A);
+  if(L===6) return A===-1?'B':'Heses';
+  if(L===2) return A===-1?'Es':'Eses';
+  if(L===5) return A===-1?'As':'Ases';
+  return b+'es'.repeat(-A);
+}
+function keyDef(pos,mode){
+  if(pos===6) return (mode==='dur'?MAJ6:MIN6)[S.enh];
+  return (mode==='dur'?MAJ:MIN)[pos];
+}
+function keyName(pos,mode){
+  const [L,A]=keyDef(pos,mode); const n=nn(L,A);
+  return mode==='dur'?n+'-Dur':n.toLowerCase()+'-Moll';
+}
+function short(pos,mode){const [L,A]=keyDef(pos,mode);const n=nn(L,A);return mode==='dur'?n:n.toLowerCase();}
+function scaleType(){return S.mode==='dur'?'dur':S.minor;}
+function buildScale(){
+  const [L,A]=keyDef(S.pos,S.mode); const t=(NAT[L]+A+12)%12; const iv=IV[scaleType()];
+  return iv.map((v,i)=>{const l=(L+i)%7;const pc=(t+v)%12;let a=((pc-NAT[l])%12+12)%12;if(a>6)a-=12;return {pc,name:nn(l,a),abs:t+v,l,a};});
+}
+function chordOn(sc,d){
+  const n=S.sev?4:3; const notes=[];
+  for(let j=0;j<n;j++) notes.push(sc[(d+2*j)%7]);
+  const ints=notes.map(x=>((x.pc-notes[0].pc)%12+12)%12);
+  const q=QUAL[ints.slice(1).join(',')]||['?','Akkord'];
+  const fn=FUN[scaleType()][d];
+  const minor3=ints[1]===3;
+  let rn=ROM[d]; if(minor3) rn=rn.toLowerCase();
+  return {notes,ints,sym:notes[0].name+q[0],qname:q[1],rn,rsuf:RSUF[q[0]]||'',
+    f:(S.sev&&fn.f7)?fn.f7:fn.f, fam:fn.fam, desc:(S.sev&&fn.d7)?fn.d7:fn.d,
+    abs:ints.map(v=>notes[0].pc+v)};
+}
+function signature(){
+  const p=S.pos; let n,type;
+  if(p===0) return 'keine';
+  if(p<6){n=p;type='s';} else if(p===6){n=6;type=S.enh==='sharp'?'s':'f';} else {n=12-p;type='f';}
+  const list=(type==='s'?SHARPS:FLATS).slice(0,n);
+  return n+' '+(type==='s'?'♯':'♭')+' · '+list.join(', ');
+}
+
+/* ---------- Quintenzirkel ---------- */
+const svgNS='http://www.w3.org/2000/svg';
+function arc(r1,r2,a0,a1){
+  const c=160,P=(r,a)=>[(c+r*Math.cos(a*Math.PI/180)).toFixed(2),(c+r*Math.sin(a*Math.PI/180)).toFixed(2)];
+  const [x1,y1]=P(r2,a0),[x2,y2]=P(r2,a1),[x3,y3]=P(r1,a1),[x4,y4]=P(r1,a0);
+  return `M${x1} ${y1}A${r2} ${r2} 0 0 1 ${x2} ${y2}L${x3} ${y3}A${r1} ${r1} 0 0 0 ${x4} ${y4}Z`;
+}
+function pt(r,a){return [160+r*Math.cos(a*Math.PI/180),160+r*Math.sin(a*Math.PI/180)];}
+function circleMarks(){
+  // Markierung der sechs leitereigenen Dur/Moll-Felder
+  const m={o:{},i:{}}; const p=S.pos, w=k=>(p+k+12)%12;
+  if(S.mode==='dur'){
+    m.o[w(0)]={f:'T',fam:'t',sel:1}; m.o[w(1)]={f:'D',fam:'d'}; m.o[w(-1)]={f:'S',fam:'s'};
+    m.i[w(0)]={f:'Tp',fam:'t'}; m.i[w(1)]={f:'Dp',fam:'d'}; m.i[w(-1)]={f:'Sp',fam:'s'};
+  } else {
+    m.i[w(0)]={f:'t',fam:'t',sel:1}; m.i[w(1)]={f:'d',fam:'d'}; m.i[w(-1)]={f:'s',fam:'s'};
+    m.o[w(0)]={f:'tP',fam:'t'}; m.o[w(1)]={f:'dP',fam:'d'}; m.o[w(-1)]={f:'sP',fam:'s'};
+  }
+  return m;
+}
+function renderCircle(){
+  const svg=document.getElementById('circle'); const m=circleMarks();
+  let h='<g class="ring">';
+  for(let ring of ['o','i']){
+    for(let i=0;i<12;i++){
+      const c=-90+i*30, mode=ring==='o'?'dur':'moll';
+      const mk=m[ring][i]; let cls=mk?(mk.sel?'sel':'tint'):'';
+      const style=mk?` style="--fam:${FAMVAR[mk.fam]}"`:'';
+      const lab=(i===6)?(ring==='o'?nn(...MAJ6[S.enh]):nn(...MIN6[S.enh]).toLowerCase()):short(i,mode);
+      const r1=ring==='o'?108:64, r2=ring==='o'?152:108;
+      const [nx,ny]=pt(ring==='o'?(mk?134:130):(mk?92:86),c);
+      const [fx,fy]=pt(ring==='o'?117:75,c);
+      h+=`<g class="${cls}"${style} role="button" tabindex="0" data-ring="${ring}" data-pos="${i}" aria-label="${keyName(i,mode==='dur'?'dur':'moll')}">`+
+         `<path d="${arc(r1,r2,c-15,c+15)}"/>`+
+         `<text class="${ring==='o'?'nm-o':'nm-i'}" x="${nx.toFixed(1)}" y="${ny.toFixed(1)}">${lab}</text>`+
+         (mk?`<text class="fn" x="${fx.toFixed(1)}" y="${fy.toFixed(1)}">${mk.f}</text>`:'')+`</g>`;
+    }
+  }
+  h+='</g>';
+  const kn=keyName(S.pos,S.mode);
+  h+=`<circle class="ctr" cx="160" cy="160" r="62"/><text class="ctr-k" x="160" y="158">${kn}</text>`+
+     `<text class="ctr-v" x="160" y="178">${S.mode==='dur'?'Dur':(S.minor==='nat'?'natürliches Moll':'harmonisches Moll')}</text>`;
+  svg.innerHTML=h;
+  const hint=document.getElementById('hint');
+  hint.textContent='Die sechs farbigen Felder sind die Dur- und Mollakkorde von '+kn+'. Links liegt die Subdominante, rechts die Dominante.'+
+    (S.mode!=='dur'&&S.minor==='harm'?' In harmonisch Moll wird die Dominante zu Dur, siehe Liste.':'');
+  const enh=document.getElementById('enh');
+  enh.hidden=S.pos!==6;
+  if(S.pos===6){const other=S.enh==='sharp'?'flat':'sharp';
+    enh.textContent='Umschreiben zu '+(S.mode==='dur'?nn(...MAJ6[other])+'-Dur':nn(...MIN6[other]).toLowerCase()+'-Moll');}
+}
+
+/* ---------- Infos & Tonleiter ---------- */
+function renderFacts(sc){
+  const par=S.mode==='dur'?keyName(S.pos,'moll'):keyName(S.pos,'dur');
+  document.getElementById('facts').innerHTML=
+    `<div class="fact"><b>Vorzeichen</b><span>${signature()}</span></div>`+
+    `<div class="fact"><b>Parallele</b><span>${par}</span></div>`+
+    `<div class="fact"><b>Grundton</b><span>${sc[0].name}</span></div>`;
+  const el=document.getElementById('scale');
+  el.innerHTML=sc.map((n,i)=>`<span class="n${(scaleType()==='harm'&&i===6)?' raised':''}"><small>${i+1}</small><strong>${n.name}</strong></span>`).join('');
+  el.setAttribute('aria-pressed',S.view==='scale'?'true':'false');
+}
+
+/* ---------- Stufenliste ---------- */
+function renderList(sc){
+  const ol=document.getElementById('chords'); let h='';
+  for(let d=0;d<7;d++){
+    const c=chordOn(sc,d);
+    h+=`<li><button type="button" class="row" data-deg="${d}" style="--fam:${FAMVAR[c.fam]}" aria-pressed="${S.view==='chord'&&S.deg===d}">`+
+      `<span class="rn">${c.rn}${c.rsuf?'<sup>'+c.rsuf+'</sup>':''}</span>`+
+      `<span><span class="sym">${c.sym}</span><span class="tones">${c.notes.map(n=>n.name).join(' – ')}</span></span>`+
+      `<span class="pill">${c.f}</span></button></li>`;
+  }
+  ol.innerHTML=h;
+}
+
+/* ---------- Instrumente ---------- */
+function piano(items){
+  // items: [{abs 0..23, name, root}]
+  const W=24,H=112,BW=15,BH=70; const white=[0,2,4,5,7,9,11];
+  const map={}; items.forEach(it=>map[it.abs]=it);
+  let w='',b='',dots='';
+  for(let k=0;k<14;k++){
+    const abs=Math.floor(k/7)*12+white[k%7]; const x=k*W;
+    w+=`<rect class="kw" x="${x+.5}" y=".5" width="${W-1}" height="${H}" rx="3"/>`;
+    const it=map[abs];
+    if(it) dots+=`<circle class="dot${it.root?' root':''}" cx="${x+W/2}" cy="${H-16}" r="10.5"/><text class="dl" x="${x+W/2}" y="${H-16}" font-size="${it.name.length>3?7:8.5}">${it.name}</text>`;
+  }
+  for(let k=0;k<14;k++){
+    const pc=white[k%7]; if([0,2,5,7,9].indexOf(pc)<0) continue;
+    const abs=Math.floor(k/7)*12+pc+1; const x=(k+1)*W-BW/2;
+    b+=`<rect class="kb" x="${x}" y=".5" width="${BW}" height="${BH}" rx="2"/>`;
+    const it=map[abs];
+    if(it) dots+=`<circle class="dot${it.root?' root':''}" cx="${x+BW/2}" cy="${BH-13}" r="7.5"/><text class="dl" x="${x+BW/2}" y="${BH-13}" font-size="${it.name.length>3?5:6.2}">${it.name}</text>`;
+  }
+  return `<svg viewBox="0 0 ${14*W+1} ${H+2}" role="img" aria-label="Klaviatur">${w}${b}${dots}</svg>`;
+}
+function guitar(pcs){
+  // pcs: Map pc -> {name, root}
+  const STR=[{n:'e',m:64},{n:'H',m:59},{n:'G',m:55},{n:'D',m:50},{n:'A',m:45},{n:'E',m:40}];
+  const NX=44,FW=26,Y0=16,SG=24,FR=12; const Wd=NX+FR*FW+8, Hd=Y0+5*SG+26;
+  let h=`<rect class="fb-wood" x="${NX}" y="${Y0-8}" width="${FR*FW}" height="${5*SG+16}" rx="3"/>`;
+  [3,5,7,9].forEach(f=>h+=`<circle class="fb-mk" cx="${NX+(f-.5)*FW}" cy="${Y0+2.5*SG}" r="4"/>`);
+  h+=`<circle class="fb-mk" cx="${NX+11.5*FW}" cy="${Y0+1.5*SG}" r="4"/><circle class="fb-mk" cx="${NX+11.5*FW}" cy="${Y0+3.5*SG}" r="4"/>`;
+  for(let f=1;f<=FR;f++) h+=`<line class="fb-fret" x1="${NX+f*FW}" y1="${Y0-8}" x2="${NX+f*FW}" y2="${Y0+5*SG+8}"/>`;
+  h+=`<line class="fb-nut" x1="${NX}" y1="${Y0-8}" x2="${NX}" y2="${Y0+5*SG+8}"/>`;
+  STR.forEach((s,i)=>{const y=Y0+i*SG;
+    h+=`<line class="fb-str" x1="${NX-22}" y1="${y}" x2="${NX+FR*FW}" y2="${y}" stroke-width="${0.8+i*0.3}"/>`;
+    h+=`<text class="fb-txt" x="8" y="${y}" dominant-baseline="central">${s.n}</text>`;
+    for(let f=0;f<=FR;f++){const pc=(s.m+f)%12; const it=pcs.get(pc); if(!it) continue;
+      const x=f===0?NX-12:NX+(f-.5)*FW;
+      h+= f===0
+        ? `<circle class="dot-out" cx="${x}" cy="${y}" r="8.5"/><text class="dl" style="fill:var(--fam)" x="${x}" y="${y}" font-size="${it.name.length>3?6:7.5}">${it.name}</text>`
+        : `<circle class="dot${it.root?' root':''}" cx="${x}" cy="${y}" r="9.5"/><text class="dl" x="${x}" y="${y}" font-size="${it.name.length>3?6:7.5}">${it.name}</text>`;
+    }});
+  [3,5,7,9,12].forEach(f=>h+=`<text class="fb-txt" x="${NX+(f-.5)*FW}" y="${Hd-6}">${f}</text>`);
+  return `<svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Gitarrengriffbrett">${h}</svg>`;
+}
+function currentItems(sc){
+  if(S.view==='scale'){
+    const items=sc.map((n,i)=>({abs:n.abs,name:n.name,root:i===0}));
+    items.push({abs:sc[0].abs+12,name:sc[0].name,root:true});
+    return {items,fam:'t'};
+  }
+  const c=chordOn(sc,S.deg);
+  return {items:c.notes.map((n,j)=>({abs:c.abs[j],name:n.name,root:j===0})),fam:c.fam,c};
+}
+function renderStage(sc){
+  const card=document.getElementById('card'); const cur=currentItems(sc);
+  card.style.setProperty('--fam',FAMVAR[cur.fam]);
+  const t=document.getElementById('stTitle'), sub=document.getElementById('stSub'), desc=document.getElementById('stDesc');
+  if(S.view==='scale'){
+    t.innerHTML=keyName(S.pos,S.mode);
+    sub.textContent='Tonleiter · '+(S.mode==='dur'?'Dur':(S.minor==='nat'?'natürliches Moll':'harmonisches Moll'));
+    desc.textContent=sc.map(n=>n.name).join(' – ')+' – '+sc[0].name+(scaleType()==='harm'?'. Die siebte Stufe ist erhöht und wird zum Leitton.':'');
+  } else {
+    const c=cur.c;
+    t.innerHTML=`${c.sym}<span class="pill fnp">${c.f}</span>`;
+    sub.innerHTML=`Stufe ${c.rn}${c.rsuf?'<sup>'+c.rsuf+'</sup>':''} · ${c.qname} · ${c.notes.map(n=>n.name).join(' – ')}`;
+    desc.textContent=c.desc;
+  }
+  const nx=document.getElementById('next'); nx.hidden=S.view==='scale';
+  if(S.view!=='scale'){
+    const list=NEXT[scaleType()][S.deg]||[];
+    document.getElementById('nextRow').innerHTML=list.map(([d,str,why])=>{const c=chordOn(sc,d);
+      return `<button type="button" class="nx" data-deg="${d}" style="--fam:${FAMVAR[c.fam]}" aria-label="${c.sym}, ${c.f}, ${why}">`+
+        `<span class="nx-sym">${c.sym}</span><span class="nx-fn">${c.f}</span>`+
+        `<span class="nx-why">${why}</span><span class="nx-str">${'●'.repeat(str)}${'○'.repeat(3-str)}</span></button>`;}).join('');
+    const tip=document.getElementById('nextTip');
+    if(scaleType()==='nat'&&(S.deg===0||S.deg===4)){
+      const D=chordOn(sc.map((n,i)=>i===6?{pc:(n.pc+1)%12,name:nn(n.l,n.a+1),abs:n.abs+1,l:n.l,a:n.a+1}:n),4);
+      tip.hidden=false; tip.textContent='Tipp: Mit '+D.sym+' statt '+chordOn(sc,4).sym+' klingt der Weg zur Tonika viel schlüssiger. Dafür auf „Moll harmonisch“ umschalten.';
+    } else tip.hidden=true;
+  }
+  const inst=document.getElementById('inst');
+  if(S.inst==='piano') inst.innerHTML=piano(cur.items);
+  else { const m=new Map(); cur.items.forEach(it=>{ if(!m.has(it.abs%12)||it.root) m.set(it.abs%12,{name:it.name,root:it.root}); }); inst.innerHTML=guitar(m); }
+}
+
+/* ---------- Segmente ---------- */
+function renderSegs(){
+  document.querySelectorAll('.seg').forEach(seg=>{
+    const k=seg.dataset.key; const v=k==='sev'?(S.sev?'1':'0'):S[k];
+    seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.val===v?'true':'false'));
+  });
+  document.getElementById('minorSeg').hidden=S.mode==='dur';
+  const snd=document.getElementById('snd'); snd.setAttribute('aria-pressed',S.sound?'true':'false'); snd.textContent=S.sound?'Ton an':'Ton aus';
+}
+function render(){const sc=buildScale(); renderCircle(); renderFacts(sc); renderList(sc); renderStage(sc); renderSegs(); save();}
+
+/* ---------- Klang ---------- */
+let ctx=null, out=null;
+function ac(){
+  if(!ctx){const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return null; ctx=new AC();
+    const comp=ctx.createDynamicsCompressor(); out=ctx.createGain(); out.gain.value=.7; out.connect(comp); comp.connect(ctx.destination);}
+  if(ctx.state==='suspended') ctx.resume();
+  return ctx;
+}
+function tone(midi,t0,dur){
+  const c=ac(); if(!c) return; const f=440*Math.pow(2,(midi-69)/12);
+  const g=c.createGain(); g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(.2,t0+.015);
+  g.gain.exponentialRampToValueAtTime(.07,t0+.35); g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+  const o=c.createOscillator(); o.type='triangle'; o.frequency.value=f;
+  const o2=c.createOscillator(); o2.type='sine'; o2.frequency.value=f*2; const g2=c.createGain(); g2.gain.value=.22;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(out);
+  o.start(t0); o2.start(t0); o.stop(t0+dur+.05); o2.stop(t0+dur+.05);
+}
+function playCurrent(){
+  const c=ac(); if(!c) return; const sc=buildScale(); const cur=currentItems(sc); const t=c.currentTime+.03;
+  if(S.view==='scale'){ cur.items.forEach((it,i)=>tone(57+it.abs,t+i*.26,.5)); }
+  else { cur.items.forEach((it,i)=>tone(57+it.abs,t+i*.09,1.8)); }
+}
+
+/* ---------- Ereignisse ---------- */
+function pickKey(ring,pos){
+  const mode=ring==='o'?'dur':'moll';
+  if(pos===6&&S.pos===6&&S.mode===mode) S.enh=S.enh==='sharp'?'flat':'sharp';
+  S.pos=pos; S.mode=mode; S.deg=0; render(); if(S.sound) playCurrent();
+}
+const circ=document.getElementById('circle');
+circ.addEventListener('click',e=>{const g=e.target.closest('g[data-pos]'); if(g) pickKey(g.dataset.ring,+g.dataset.pos);});
+circ.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ') return; const g=e.target.closest('g[data-pos]'); if(g){e.preventDefault(); pickKey(g.dataset.ring,+g.dataset.pos);}});
+document.getElementById('enh').addEventListener('click',()=>{S.enh=S.enh==='sharp'?'flat':'sharp'; render();});
+document.getElementById('chords').addEventListener('click',e=>{const b=e.target.closest('.row'); if(!b) return; S.deg=+b.dataset.deg; S.view='chord'; render(); if(S.sound) playCurrent();});
+document.getElementById('scale').addEventListener('click',()=>{S.view='scale'; render(); if(S.sound) playCurrent();});
+document.querySelectorAll('.seg').forEach(seg=>seg.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; const k=seg.dataset.key;
+  if(k==='sev') S.sev=b.dataset.val==='1'; else S[k]=b.dataset.val; render();
+}));
+document.getElementById('nextRow').addEventListener('click',e=>{const b=e.target.closest('.nx'); if(!b) return; S.deg=+b.dataset.deg; S.view='chord'; render(); if(S.sound) playCurrent();});
+document.getElementById('play').addEventListener('click',playCurrent);
+document.getElementById('snd').addEventListener('click',()=>{S.sound=!S.sound; render();});
+render();
+})();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
+</script>
+</body></html>
